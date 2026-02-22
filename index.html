@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chord Detective</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=Crimson+Pro:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0d12;
+  --surface: #14141e;
+  --surface2: #1c1c2a;
+  --border: #282838;
+  --accent: #e8d5a3;
+  --accent2: #7ec9d4;
+  --accent3: #c47eb8;
+  --dim: #52526a;
+  --key-white: #f2ede4;
+  --key-black: #18141e;
+  --key-pressed: #e8d5a3;
+  --key-black-pressed: #b89660;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: #eeece6;
+  font-family: 'Space Mono', monospace;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* TOP BAR */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 0.55rem 1.6rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
+}
+.logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  line-height: 1;
+}
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--dim); flex-shrink: 0; transition: all 0.3s;
+}
+.dot.on  { background: #6bdb7f; box-shadow: 0 0 7px #6bdb7f88; }
+.dot.err { background: #db6b6b; box-shadow: 0 0 7px #db6b6b88; }
+.status-txt { font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+.connect-btn {
+  font-family: 'Space Mono', monospace; font-size: 0.6rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  background: none; border: 1px solid var(--accent); color: var(--accent);
+  padding: 0.3rem 0.7rem; cursor: pointer; transition: all 0.2s;
+}
+.connect-btn:hover { background: var(--accent); color: var(--bg); }
+.connect-btn.hidden { display: none; }
+.device-name { font-size: 0.62rem; color: var(--dim); letter-spacing: 0.06em; }
+.topbar-right { margin-left: auto; font-size: 0.58rem; color: var(--dim); letter-spacing: 0.08em; }
+
+/* CHORD BAR */
+.chord-bar {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  min-height: 96px;
+}
+
+/* Big chord name section */
+.chord-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 1.4rem 0.7rem 1.6rem;
+  border-right: 1px solid var(--border);
+  min-width: 260px;
+  flex-shrink: 0;
+}
+.chord-huge {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 4.2rem;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+  white-space: nowrap;
+  transition: color 0.1s;
+}
+.chord-huge.anim { animation: cp 0.22s ease; }
+@keyframes cp { 0%{transform:scale(1)} 40%{transform:scale(1.05)} 100%{transform:scale(1)} }
+.chord-meta { display: flex; flex-direction: column; gap: 0.35rem; }
+.inv-tag {
+  font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--accent2); background: var(--surface2);
+  border: 1px solid var(--border); padding: 0.22rem 0.55rem; white-space: nowrap;
+}
+.chord-quality {
+  font-family: 'Crimson Pro', serif; font-style: italic;
+  font-size: 0.85rem; color: var(--dim);
+}
+
+/* Notation cells */
+.notations {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  flex: 1;
+  min-width: 0;
+  border-right: 1px solid var(--border);
+}
+.n-cell {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 0.55rem 0.9rem;
+  border-right: 1px solid var(--border);
+  min-width: 0; transition: background 0.15s;
+}
+.n-cell:last-child { border-right: none; }
+.n-cell:hover { background: var(--surface2); }
+.n-lbl {
+  font-size: 0.5rem; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--dim); margin-bottom: 0.28rem; white-space: nowrap;
+}
+.n-val {
+  font-family: 'Crimson Pro', serif; font-size: 1.25rem; font-weight: 300;
+  color: #eeece6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Active notes */
+.notes-box {
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 0.28rem; padding: 0.6rem 1.1rem; min-width: 140px; flex-shrink: 0;
+}
+.notes-lbl { font-size: 0.5rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); }
+.chips { display: flex; flex-wrap: wrap; gap: 0.28rem; }
+.chip {
+  font-size: 0.65rem; padding: 0.12rem 0.4rem;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--accent2); letter-spacing: 0.04em;
+  animation: cin 0.1s ease;
+}
+@keyframes cin { from{opacity:0;transform:translateY(-3px)} to{opacity:1;transform:none} }
+
+/* KEYBOARD HERO */
+.kb-area { flex: 1; min-height: 0; position: relative; }
+.kb-scroll {
+  width: 100%; height: 100%;
+  overflow-x: auto; overflow-y: hidden;
+  display: flex; align-items: center;
+  padding: 0 1.5rem;
+}
+.kb-scroll::-webkit-scrollbar { height: 5px; }
+.kb-scroll::-webkit-scrollbar-track { background: var(--bg); }
+.kb-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.keyboard { position: relative; flex-shrink: 0; }
+
+.key { position: absolute; cursor: default; transition: background 0.06s; user-select: none; }
+.key.white {
+  background: var(--key-white);
+  border: 1px solid #b0a898; border-top: none;
+  border-radius: 0 0 4px 4px; z-index: 1;
+}
+.key.white.pressed { background: var(--key-pressed); border-color: #b89040; box-shadow: inset 0 -2px 6px rgba(0,0,0,0.2); }
+.key.black {
+  background: var(--key-black); border-radius: 0 0 3px 3px; z-index: 2;
+  border: 1px solid #0a080e; box-shadow: 2px 4px 10px rgba(0,0,0,0.7);
+}
+.key.black.pressed { background: var(--key-black-pressed); box-shadow: 0 0 14px rgba(232,213,163,0.4); }
+.key-lbl {
+  position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  font-size: 0.4rem; color: #9a9080; pointer-events: none;
+  white-space: nowrap; font-family: 'Space Mono', monospace;
+}
+
+/* STATUS BAR */
+.statusbar {
+  display: flex; align-items: center; gap: 1.5rem;
+  padding: 0.38rem 1.6rem; border-top: 1px solid var(--border);
+  background: var(--surface); flex-shrink: 0;
+  font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim);
+}
+.vel-bar { width: 100px; height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; }
+.vel-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); width: 0%; transition: width 0.08s; }
+.history-strip { display: flex; gap: 0.6rem; overflow: hidden; flex: 1; }
+.h-pill {
+  font-family: 'Crimson Pro', serif; font-size: 0.8rem; font-style: italic;
+  padding: 0 0.3rem; color: var(--dim); white-space: nowrap;
+}
+.h-pill:first-child { color: var(--accent); }
+
+/* quality colors */
+.q-major { color: var(--accent) !important; }
+.q-minor { color: var(--accent2) !important; }
+.q-dom7  { color: var(--accent3) !important; }
+.q-dim   { color: #e08080 !important; }
+.q-aug   { color: #80e0a0 !important; }
+.q-sus   { color: #e0cc80 !important; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">Chord Detective</div>
+  <div class="dot" id="dot"></div>
+  <span class="status-txt" id="statusTxt">未连接</span>
+  <button class="connect-btn" id="connectBtn" onclick="initMIDI()">连接 MIDI</button>
+  <span class="device-name" id="deviceName"></span>
+  <span class="topbar-right">Roland FP-30X &nbsp;·&nbsp; Web MIDI API &nbsp;·&nbsp; 鼠标可测试</span>
+</div>
+
+<!-- CHORD INFO BAR -->
+<div class="chord-bar">
+  <div class="chord-main">
+    <div class="chord-huge" id="chordHuge">—</div>
+    <div class="chord-meta">
+      <div class="inv-tag" id="invTag">等待输入</div>
+      <div class="chord-quality" id="chordQuality">弹奏和弦即可识别</div>
+    </div>
+  </div>
+
+  <div class="notations">
+    <div class="n-cell"><div class="n-lbl">简写 Short</div><div class="n-val" id="n0">—</div></div>
+    <div class="n-cell"><div class="n-lbl">全称 Full</div><div class="n-val" id="n1">—</div></div>
+    <div class="n-cell"><div class="n-lbl">经典 Classic</div><div class="n-val" id="n2">—</div></div>
+    <div class="n-cell"><div class="n-lbl">罗马 Roman</div><div class="n-val" id="n3">—</div></div>
+    <div class="n-cell"><div class="n-lbl">斜杠 Slash</div><div class="n-val" id="n4">—</div></div>
+    <div class="n-cell"><div class="n-lbl">音程 Intervals</div><div class="n-val" id="n5" style="font-size:0.82rem;letter-spacing:-0.02em">—</div></div>
+  </div>
+
+  <div class="notes-box">
+    <div class="notes-lbl">当前音符</div>
+    <div class="chips" id="notesChips"><span style="color:var(--dim);font-size:0.68rem">—</span></div>
+  </div>
+</div>
+
+<!-- KEYBOARD HERO -->
+<div class="kb-area">
+  <div class="kb-scroll" id="kbScroll">
+    <div class="keyboard" id="keyboard"></div>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="statusbar">
+  <span>力度</span>
+  <div class="vel-bar"><div class="vel-fill" id="velFill"></div></div>
+  <span>历史</span>
+  <div class="history-strip" id="histStrip"></div>
+</div>
+
+<script>
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const IS_BLACK   = [false,true,false,true,false,false,true,false,true,false,true,false];
+const INV_LABELS = ['原位 Root Position','第一转位 1st Inversion','第二转位 2nd Inversion','第三转位 3rd Inversion'];
+const INTV_NAMES = {0:'R',1:'b2',2:'M2',3:'m3',4:'M3',5:'P4',6:'b5',7:'P5',8:'#5',9:'M6',10:'b7',11:'M7',14:'M9',17:'P11'};
+
+const CHORD_DB = [
+  {i:[0,7],           s:'5',     name:'Power',           q:'sus'  },
+  {i:[0,4,7],         s:'',      name:'Major',           q:'major'},
+  {i:[0,3,7],         s:'m',     name:'Minor',           q:'minor'},
+  {i:[0,4,8],         s:'aug',   name:'Augmented',       q:'aug'  },
+  {i:[0,3,6],         s:'dim',   name:'Diminished',      q:'dim'  },
+  {i:[0,2,7],         s:'sus2',  name:'Sus 2nd',         q:'sus'  },
+  {i:[0,5,7],         s:'sus4',  name:'Sus 4th',         q:'sus'  },
+  {i:[0,4,7,9],       s:'6',     name:'Major 6th',       q:'major'},
+  {i:[0,3,7,9],       s:'m6',    name:'Minor 6th',       q:'minor'},
+  {i:[0,4,7,11],      s:'maj7',  name:'Major 7th',       q:'major'},
+  {i:[0,3,7,10],      s:'m7',    name:'Minor 7th',       q:'minor'},
+  {i:[0,4,7,10],      s:'7',     name:'Dominant 7th',    q:'dom7' },
+  {i:[0,3,6,10],      s:'m7b5',  name:'Half-Dim 7th',    q:'dim'  },
+  {i:[0,3,6,9],       s:'dim7',  name:'Dim 7th',         q:'dim'  },
+  {i:[0,4,8,10],      s:'7#5',   name:'Aug Dom 7th',     q:'aug'  },
+  {i:[0,3,7,11],      s:'mM7',   name:'Minor-Maj 7th',   q:'minor'},
+  {i:[0,4,7,14],      s:'add9',  name:'Add 9th',         q:'major'},
+  {i:[0,3,7,14],      s:'madd9', name:'Minor Add 9th',   q:'minor'},
+  {i:[0,4,7,10,14],   s:'9',     name:'Dominant 9th',    q:'dom7' },
+  {i:[0,4,7,11,14],   s:'maj9',  name:'Major 9th',       q:'major'},
+  {i:[0,3,7,10,14],   s:'m9',    name:'Minor 9th',       q:'minor'},
+  {i:[0,4,7,10,14,17],s:'11',    name:'Dominant 11th',   q:'dom7' },
+];
+
+// ── Build Keyboard ──────────────────────────────
+function buildKeyboard() {
+  const scroll = document.getElementById('kbScroll');
+  const kb     = document.getElementById('keyboard');
+  kb.innerHTML = '';
+
+  const areaH = scroll.clientHeight || 200;
+  const areaW = scroll.clientWidth  || window.innerWidth;
+  // 52 white keys must fit in available width (with small padding)
+  const WW    = Math.max(Math.floor((areaW - 32) / 52), 8);
+  const WH    = Math.min(Math.max(areaH - 16, 80), Math.round(WW / 0.195));
+  const BH    = Math.round(WH * 0.60);
+  const BW    = Math.round(WW * 0.62);
+
+  kb.style.height = WH + 'px';
+
+  // compute white key positions
+  const wPos = {}; // midi -> left px
+  let wi = 0;
+  for (let m = 21; m <= 108; m++) {
+    if (!IS_BLACK[m % 12]) { wPos[m] = wi * WW; wi++; }
+  }
+  kb.style.width = (wi * WW) + 'px';
+
+  // White keys pass
+  for (let m = 21; m <= 108; m++) {
+    const ni = m % 12;
+    if (IS_BLACK[ni]) continue;
+    const d = document.createElement('div');
+    d.className = 'key white'; d.id = 'k' + m; d.dataset.midi = m;
+    d.style.cssText = `left:${wPos[m]}px;top:0;width:${WW}px;height:${WH}px`;
+    const oct = Math.floor(m / 12) - 1;
+    if (ni === 0 || m === 21 || m === 23) {
+      const lbl = document.createElement('div');
+      lbl.className = 'key-lbl';
+      lbl.textContent = NOTE_NAMES[ni] + oct;
+      d.appendChild(lbl);
+    }
+    kb.appendChild(d);
+  }
+
+  // Black keys pass
+  let prevW = -1;
+  for (let m = 21; m <= 108; m++) {
+    const ni = m % 12;
+    if (!IS_BLACK[ni]) { prevW = m; continue; }
+    const d = document.createElement('div');
+    d.className = 'key black'; d.id = 'k' + m; d.dataset.midi = m;
+    const left = wPos[prevW] + WW - Math.round(BW * 0.45);
+    d.style.cssText = `left:${left}px;top:0;width:${BW}px;height:${BH}px`;
+    kb.appendChild(d);
+  }
+}
+
+let resizeT;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => { buildKeyboard(); rehighlight(); }, 180);
+});
+function rehighlight() {
+  activeNotes.forEach(m => { const k=document.getElementById('k'+m); if(k) k.classList.add('pressed'); });
+}
+
+// ── Chord Detection ─────────────────────────────
+function detectChord(noteSet) {
+  if (noteSet.size < 2) return null;
+  const sorted = [...noteSet].sort((a,b) => a-b);
+  const pcs = [...new Set(sorted.map(m => m % 12))].sort((a,b) => a-b);
+  let best = null, bestScore = -1;
+  for (let root = 0; root < 12; root++) {
+    const rel = pcs.map(pc => (pc - root + 12) % 12).sort((a,b) => a-b);
+    for (const tmpl of CHORD_DB) {
+      if (!tmpl.i.every(iv => rel.includes(iv))) continue;
+      const score = tmpl.i.length * 10 + (rel.length === tmpl.i.length ? 5 : 0);
+      if (score <= bestScore) continue;
+      bestScore = score;
+      const bassPC  = sorted[0] % 12;
+      const bassIdx = tmpl.i.indexOf((bassPC - root + 12) % 12);
+      best = { root, tmpl, inv: bassIdx < 0 ? 0 : bassIdx, bass: sorted[0], pcs };
+    }
+  }
+  return best;
+}
+
+function buildNotations(c) {
+  const R   = NOTE_NAMES[c.root];
+  const Bn  = NOTE_NAMES[c.bass % 12];
+  const short    = R + c.tmpl.s;
+  const full     = R + ' ' + c.tmpl.name;
+  const classic  = c.tmpl.s === ''    ? R + ' Major'
+                 : c.tmpl.s === 'm'   ? R + ' Minor'
+                 : full;
+  const slash    = c.inv > 0 ? short + '/' + Bn : short;
+  const intervals= c.tmpl.i.map(i => INTV_NAMES[i] ?? i).join('-');
+  // Roman numeral relative to C major
+  const cScale   = [0,2,4,5,7,9,11];
+  const deg      = cScale.indexOf(c.root);
+  const RNB      = ['I','II','III','IV','V','VI','VII'];
+  let roman = deg >= 0 ? RNB[deg] : '?';
+  if (c.tmpl.q === 'minor' || c.tmpl.q === 'dim') roman = roman.toLowerCase();
+  const suf = c.tmpl.s;
+  if (suf === 'dim' || suf === 'dim7') roman += '°';
+  else if (suf === 'aug') roman += '+';
+  if (/7$/.test(suf)) roman += suf === 'maj7' ? 'M7' : '7';
+  return { short, full, classic, roman, slash, intervals };
+}
+
+// ── State & UI ──────────────────────────────────
+let activeNotes = new Set();
+let midiAccess  = null, selInput = null;
+let history = [], lastKey = '';
+
+function updateUI() {
+  // Keyboard highlight
+  document.querySelectorAll('.key.pressed').forEach(k => k.classList.remove('pressed'));
+  activeNotes.forEach(m => { const k=document.getElementById('k'+m); if(k) k.classList.add('pressed'); });
+
+  // Note chips
+  const chips = document.getElementById('notesChips');
+  if (!activeNotes.size) {
+    chips.innerHTML = '<span style="color:var(--dim);font-size:0.68rem">—</span>';
+  } else {
+    chips.innerHTML = [...activeNotes].sort((a,b)=>a-b)
+      .map(m => `<span class="chip">${NOTE_NAMES[m%12]}${Math.floor(m/12)-1}</span>`).join('');
+  }
+
+  const c = detectChord(activeNotes);
+  if (!c) {
+    setNoChord(); lastKey = ''; return;
+  }
+
+  const fmt = buildNotations(c);
+  const ck  = fmt.short + '_' + c.inv;
+
+  const el = document.getElementById('chordHuge');
+  el.classList.remove('anim'); void el.offsetWidth;
+  el.textContent = fmt.short || NOTE_NAMES[c.root];
+  el.className   = `chord-huge anim q-${c.tmpl.q}`;
+
+  document.getElementById('invTag').textContent      = INV_LABELS[Math.min(c.inv,3)];
+  document.getElementById('chordQuality').textContent = c.tmpl.name;
+  document.getElementById('n0').textContent = fmt.short;
+  document.getElementById('n1').textContent = fmt.full;
+  document.getElementById('n2').textContent = fmt.classic;
+  document.getElementById('n3').textContent = fmt.roman;
+  document.getElementById('n4').textContent = fmt.slash;
+  document.getElementById('n5').textContent = fmt.intervals;
+
+  if (ck !== lastKey) { lastKey = ck; pushHistory(fmt.short); }
+}
+
+function setNoChord() {
+  document.getElementById('chordHuge').textContent = '—';
+  document.getElementById('chordHuge').className = 'chord-huge';
+  document.getElementById('invTag').textContent = activeNotes.size > 0 ? '音符不足' : '等待输入';
+  document.getElementById('chordQuality').textContent = activeNotes.size === 1 ? '单音' : '弹奏和弦即可识别';
+  ['n0','n1','n2','n3','n4','n5'].forEach(id => document.getElementById(id).textContent = '—');
+}
+
+function pushHistory(name) {
+  history.unshift(name);
+  if (history.length > 14) history.pop();
+  document.getElementById('histStrip').innerHTML =
+    history.map(h => `<span class="h-pill">${h}</span>`).join('');
+}
+
+// ── MIDI ────────────────────────────────────────
+async function initMIDI() {
+  try {
+    midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+    document.getElementById('connectBtn').classList.add('hidden');
+    setDot('on', '已连接');
+    scanDevices();
+    midiAccess.onstatechange = scanDevices;
+  } catch(e) { setDot('err', '访问被拒绝'); }
+}
+
+function scanDevices() {
+  const inputs = [...midiAccess.inputs.values()];
+  if (!inputs.length) return;
+  if (selInput) selInput.onmidimessage = null;
+  const fp = inputs.find(i => /roland|fp.?30/i.test(i.name)) || inputs[0];
+  selInput = fp;
+  fp.onmidimessage = onMsg;
+  document.getElementById('deviceName').textContent = fp.name;
+  setDot('on', fp.name.length > 16 ? fp.name.slice(0,16)+'…' : fp.name);
+}
+
+function onMsg(e) {
+  const [st, note, vel] = e.data;
+  const cmd = st & 0xf0;
+  if (cmd === 0x90 && vel > 0) {
+    activeNotes.add(note);
+    document.getElementById('velFill').style.width = (vel/127*100)+'%';
+  } else if (cmd === 0x80 || (cmd === 0x90 && vel === 0)) {
+    activeNotes.delete(note);
+  }
+  updateUI();
+}
+
+function setDot(cls, txt) {
+  document.getElementById('dot').className    = 'dot ' + cls;
+  document.getElementById('statusTxt').textContent = txt;
+}
+
+// ── Mouse test ──────────────────────────────────
+let mdown = false;
+document.addEventListener('mousedown', () => mdown = true);
+document.addEventListener('mouseup', () => {
+  mdown = false;
+  activeNotes.clear();
+  updateUI();
+});
+document.getElementById('keyboard').addEventListener('mousedown', e => {
+  const k = e.target.closest('.key');
+  if (k) { activeNotes.add(+k.dataset.midi); updateUI(); }
+});
+document.getElementById('keyboard').addEventListener('mouseover', e => {
+  if (!mdown) return;
+  const k = e.target.closest('.key');
+  if (k) { activeNotes.add(+k.dataset.midi); updateUI(); }
+});
+
+// ── Init ────────────────────────────────────────
+requestAnimationFrame(() => requestAnimationFrame(buildKeyboard));
+</script>
+</body>
+</html>
