@@ -1,4 +1,4 @@
-# Chord Detective 和弦侦探
+# Chord Detective 和弦识别
 
 English | [中文](#中文说明)
 
